@@ -7,6 +7,7 @@
 
 import Foundation
 import QuartzCore
+import AVFoundation
 
 class IconAnimator {
 
@@ -38,6 +39,8 @@ class IconAnimator {
 
     /// Whether or not this animation has been cancelled
     private var isCancelled = false
+    
+    private var audioPlayer: AVAudioPlayer?
 
     init(numberOfFrames: Int,
          numberOfLoops: Int = 1,
@@ -47,6 +50,7 @@ class IconAnimator {
         self.targetFramesPerSecond = targetFramesPerSecond
         self.shouldRunOnMainThread = shouldRunOnMainThread
         self.numberOfLoops = numberOfLoops
+        configureAudioSession()
     }
 
     /// Starts a new app icon animation. Can be called multiple times.
@@ -56,11 +60,14 @@ class IconAnimator {
         currentLoopCount = 0
         isCancelled = false
         self.completion = completion
+        
+        playAudio()
 
         // Start the animation, either using the main thread loop
         // or timer, depending on configuration
         if shouldRunOnMainThread {
             startAnimationOnMainThread()
+            
         } else {
             startAnimationUsingTimer()
         }
@@ -69,6 +76,7 @@ class IconAnimator {
     /// Cancel the current animation, if any
     func cancel() {
         isCancelled = true
+        audioPlayer?.stop()
         completion?()
     }
 
@@ -168,18 +176,17 @@ class IconAnimator {
      - returns A boolean value indicating whether this animation still has more frames to display
      */
     private func updateFrame() -> Bool {
-        // Determine the frame we _should_ be showing
-        // based on the current time. This allows the animation
-        // to continue smoothly even if some frames are dropped
+        // Determine the frame we _should_ be showing based on the current time
         let timeSinceStart = CACurrentMediaTime() - animationStartTime
-        let currentFrame = Int(timeSinceStart * targetFramesPerSecond) % numberOfFrames
+        let totalFramesPassed = Int(timeSinceStart * targetFramesPerSecond)
+        let currentFrame = totalFramesPassed % numberOfFrames
 
         // Determine the name of the icon to show
-        let iconName = String(format: "BeachBall%03d", currentFrame);
+        let iconName = String(format: "bad_apple_%05d", currentFrame)
 
-        // Use `LSApplicationProxy.setAlternateIconName` to update
-        // our icon (which allows us to skip the user-facing alert
-        // and update even when we're in the backtround)
+        print(iconName)
+
+        // Use `LSApplicationProxy.setAlternateIconName` to update our icon
         appProxy.setAlternateIconName(iconName) { success, error in
             if !success || error != nil {
                 print("Error: \(error as Any)")
@@ -188,16 +195,48 @@ class IconAnimator {
         }
 
         // If we've reached the end of a loop...
-        if currentFrame == 0 {
+        if totalFramesPassed >= numberOfFrames {
             // Check if we've looped as many times as we'd like.
             // If so, return `false` to indicate that we're done animating
-            if currentLoopCount == numberOfLoops {
+            if currentLoopCount >= numberOfLoops - 1 {
                 return false
             }
+
+            // Increment the loop count
             currentLoopCount += 1
+
+            // Update the animation start time to the beginning of the next loop
+            animationStartTime = CACurrentMediaTime()
         }
 
         return true
     }
 
+    private func playAudio() {
+            guard let audioPath = Bundle.main.path(forResource: "bad_apple", ofType: "wav") else {
+                print("Audio file not found")
+                return
+            }
+
+            let audioURL = URL(fileURLWithPath: audioPath)
+            
+            do {
+                audioPlayer = try AVAudioPlayer(contentsOf: audioURL)
+                audioPlayer?.numberOfLoops = numberOfLoops
+                audioPlayer?.play()
+            } catch {
+                print("Error loading audio file: \(error)")
+            }
+        }
+    
+    private func configureAudioSession() {
+            let audioSession = AVAudioSession.sharedInstance()
+            
+            do {
+                try audioSession.setCategory(.playback, mode: .default)
+                try audioSession.setActive(true)
+            } catch {
+                print("Failed to set audio session category: \(error)")
+            }
+        }
 }
