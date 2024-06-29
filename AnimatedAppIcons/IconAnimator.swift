@@ -182,7 +182,7 @@ class IconAnimator {
         let currentFrame = totalFramesPassed % numberOfFrames
 
         // Determine the name of the icon to show
-        let iconName = String(format: "bad_apple_%05d", currentFrame)
+        let iconName = String(format: "ba_%05d", currentFrame + 1)
 
         print(iconName)
 

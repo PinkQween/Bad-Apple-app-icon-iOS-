@@ -7,13 +7,15 @@
 
 import UIKit
 
+let frames = 6569
+
 class ViewController: UIViewController {
 
     // An `IconAnimator` that runs at 30fps on the main thread
     let iconAnimator = IconAnimator(
-        numberOfFrames: 6562,
+        numberOfFrames: frames,
         numberOfLoops: 1,
-        targetFramesPerSecond: 30,
+        targetFramesPerSecond: CGFloat(frames / 232),
         shouldRunOnMainThread: true
     )
 
